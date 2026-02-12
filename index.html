@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แบบฟอร์มร้องเรียน</title>
+
+  <style>
+    body {
+      font-family: system-ui;
+      background: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: #fff;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.08);
+      width: 100%;
+      max-width: 520px;
+      transition: .2s;
+    }
+
+    .card.loading {
+      opacity: .6;
+      pointer-events: none;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 14px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #9ca3af;
+    }
+
+    #status {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+<div class="card">
+  <h2>แบบฟอร์มร้องเรียน</h2>
+
+  <form id="complaintForm">
+    <select id="subject" required>
+      <option value="">-- เลือกหัวข้อที่ร้องเรียน --</option>
+      <option>การเรียนการสอน</option>
+      <option>ครู/บุคลากร</option>
+      <option>อาคารสถานที่</option>
+      <option>ระบบไอที</option>
+      <option>การเงิน/พัสดุ</option>
+      <option>อื่น ๆ</option>
+    </select>
+
+    <input id="name" type="text" placeholder="ชื่อ-นามสกุล" required>
+    <input id="email" type="email" placeholder="อีเมล (ถ้ามี)">
+    <input id="phone" type="tel" placeholder="เบอร์โทร" required>
+
+    <textarea id="complaint" rows="4" placeholder="รายละเอียดเรื่องร้องเรียน" required></textarea>
+
+    <input type="file" id="files" multiple accept="image/*,.pdf">
+
+    <button id="submitBtn" type="submit">ส่งเรื่องร้องเรียน</button>
+  </form>
+
+  <div id="status"></div>
+</div>
+
+<script>
+/* =========================
+   CONFIG
+========================= */
+const API_URL = 'https://script.google.com/macros/s/AKfycbw8xgs6aErcJacxMHVzhmpw99EIzDiBLKnHLo5O3RP4b3aGHIP9IzwW13wTSognhpyO/exec';
+const MAX_FILE_MB = 1.5;
+const MAX_FILES = 3;
+const MAX_TOTAL_MB = 5;
+
+/* =========================
+   DOM
+========================= */
+const form = document.getElementById('complaintForm');
+const btn = document.getElementById('submitBtn');
+const card = document.querySelector('.card');
+const statusDiv = document.getElementById('status');
+
+const subjectEl = document.getElementById('subject');
+const nameEl = document.getElementById('name');
+const emailEl = document.getElementById('email');
+const phoneEl = document.getElementById('phone');
+const complaintEl = document.getElementById('complaint');
+const filesEl = document.getElementById('files');
+
+/* =========================
+   UI
+========================= */
+function setLoading(v) {
+  btn.disabled = v;
+  card.classList.toggle('loading', v);
+  statusDiv.textContent = v ? 'กำลังส่ง...' : '';
+}
+
+function showError(msg, el) {
+  statusDiv.style.color = 'red';
+  statusDiv.textContent = msg;
+  if (el) el.focus();
+}
+
+function showSuccess(msg) {
+  statusDiv.style.color = 'green';
+  statusDiv.textContent = msg;
+}
+
+/* =========================
+   UTILS
+========================= */
+const v = el => (el.value || '').trim();
+const sanitize = s => String(s || '').trim();
+
+/* =========================
+   VALIDATION
+========================= */
+function validate(d) {
+  if (!d.subject) throw { msg: 'กรุณาเลือกหัวข้อ', el: subjectEl };
+
+  if (d.name.length < 2) throw { msg: 'กรอกชื่อให้ครบ', el: nameEl };
+
+  if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) {
+    throw { msg: 'อีเมลไม่ถูกต้อง', el: emailEl };
+  }
+
+  if (!/^[0-9]{9,10}$/.test(d.phone.replace(/\D/g, ''))) {
+    throw { msg: 'เบอร์โทรไม่ถูกต้อง', el: phoneEl };
+  }
+
+  if (d.complaint.length < 5) {
+    throw { msg: 'รายละเอียดสั้นเกินไป', el: complaintEl };
+  }
+}
+
+/* =========================
+   FILES
+========================= */
+async function readFiles(list) {
+  if (list.length > MAX_FILES) {
+    throw { msg: `แนบได้ไม่เกิน ${MAX_FILES} ไฟล์` };
+  }
+
+  let total = 0;
+  const results = [];
+
+  for (const f of list) {
+    total += f.size;
+
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      throw { msg: `ไฟล์ ${f.name} ใหญ่เกินกำหนด` };
+    }
+
+    if (total > MAX_TOTAL_MB * 1024 * 1024) {
+      throw { msg: 'ขนาดไฟล์รวมเกิน 5MB' };
+    }
+
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+
+    results.push({
+      fileName: f.name,
+      data: base64,
+      mimeType: f.type
+    });
+  }
+
+  return results;
+}
+
+/* =========================
+   API
+========================= */
+async function submitToApi(data) {
+  if (API_URL.includes('REPLACE_WITH_DEPLOYMENT_ID')) {
+    throw new Error('Please set API_URL to your Apps Script /exec URL');
+  }
+
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(data)
+  });
+
+  const text = await res.text();
+  let parsed;
+
+  try {
+    parsed = JSON.parse(text);
+  } catch (_) {
+    throw new Error(`Unexpected API response: ${text.slice(0, 120)}`);
+  }
+
+  if (!parsed.ok) {
+    throw new Error(parsed.message || 'ระบบขัดข้อง');
+  }
+
+  return parsed;
+}
+
+/* =========================
+   SUBMIT
+========================= */
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+
+  if (btn.disabled) return;
+
+  try {
+    setLoading(true);
+
+    const data = {
+      subject: sanitize(v(subjectEl)),
+      name: sanitize(v(nameEl)),
+      email: sanitize(v(emailEl)),
+      phone: sanitize(v(phoneEl)),
+      complaint: sanitize(v(complaintEl)),
+      ua: navigator.userAgent
+    };
+
+    validate(data);
+    data.files = await readFiles(filesEl.files);
+
+    const result = await submitToApi(data);
+
+    setLoading(false);
+    showSuccess(result.message || 'ส่งสำเร็จ');
+    form.reset();
+  } catch (err) {
+    setLoading(false);
+    showError(err.msg || err.message || 'ระบบขัดข้อง');
+  }
+});
+</script>
+</body>
+</html>
