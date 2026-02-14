@@ -1,0 +1,1 @@
+:root{font-family:Sarabun,sans-serif}body{margin:0}#root{min-height:100vh}.form-shell{animation:cardIn .3s ease-out both}#status{transition:color .18s ease}@keyframes cardIn{0%{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
