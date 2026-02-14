@@ -9,35 +9,34 @@ React + Vite frontend for complaint submission, deployed to GitHub Pages from a 
 |- index.html
 |- package.json
 |- vite.config.js
+|- .env.example
 |- src/
 |  |- App.jsx
 |  |- main.jsx
 |  `- index.css
 `- public/
-   |- assets/rcat-logo.jpg
-   `- config.example.js
+   `- assets/rcat-logo.jpg
 ```
 
 ## API config
 
-This app reads API URL from either:
+This app reads API URL from `.env` using:
 
-1. `VITE_API_URL` (build-time env), or
-2. `window.APP_CONFIG.API_URL` from `public/config.js`
+1. `VITE_API_URI`
 
 Recommended for this repo:
 
-1. Copy `public/config.example.js` to `public/config.js`
-2. Put your Google Apps Script `/exec` URL in `public/config.js`
+1. Copy `.env.example` to `.env`
+2. Put your Google Apps Script `/exec` URL in `.env`
 
-`public/config.js` is ignored by git, so your local value is not committed.
+`.env` is ignored by git, so your local value is not committed.
 
 ## Local development
 
 1. Install dependencies:
    - `npm install`
-2. Create runtime config:
-   - `Copy-Item public/config.example.js public/config.js`
+2. Create env file:
+   - `Copy-Item .env.example .env`
 3. Start dev server:
    - `npm run dev`
 

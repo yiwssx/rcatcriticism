@@ -1,3 +1,5 @@
 node_modules
 dist
-public/config.js
+.env
+.env.local
+.env.*.local

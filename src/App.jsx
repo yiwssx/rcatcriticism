@@ -11,18 +11,13 @@ const STATUS_CLASS = {
   success: "mt-5 min-h-6 text-center text-sm font-semibold text-emerald-600"
 };
 
-function getApiUrl() {
-  const envUrl = import.meta.env.VITE_API_URL
-    ? String(import.meta.env.VITE_API_URL).trim()
+function getApiUri() {
+  return import.meta.env.VITE_API_URI
+    ? String(import.meta.env.VITE_API_URI).trim()
     : "";
-  const runtimeUrl = window.APP_CONFIG?.API_URL
-    ? String(window.APP_CONFIG.API_URL).trim()
-    : "";
-
-  return envUrl || runtimeUrl;
 }
 
-const API_URL = getApiUrl();
+const API_URI = getApiUri();
 const sanitize = (value) => String(value || "").trim();
 
 function validate(data) {
@@ -88,11 +83,11 @@ async function readFiles(list) {
 }
 
 async function submitToApi(data) {
-  if (!API_URL) {
-    throw new Error("Missing API_URL in public/config.js or VITE_API_URL");
+  if (!API_URI) {
+    throw new Error("Missing VITE_API_URI in .env");
   }
 
-  const response = await fetch(API_URL, {
+  const response = await fetch(API_URI, {
     method: "POST",
     headers: {
       "Content-Type": "text/plain;charset=utf-8"
